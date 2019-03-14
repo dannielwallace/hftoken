@@ -76,7 +76,7 @@ func PackageToken(tokenStr string, encryptKey string) (string, error) {
 }
 
 //length encryptKey should be equal to 16
-func ParseToken(tokenStr string, encryptKey string, noStrictMode bool) (interface{}, error) {
+func ServerParseToken(tokenStr string, encryptKey string, noStrictMode bool) (interface{}, error) {
 	if len(encryptKey) != g_EncryptKeyLength {
 		panic(fmt.Sprintf("[hftoken] ParseToken: encryptKey should be equal to %d", g_EncryptKeyLength))
 	}
@@ -110,4 +110,21 @@ func ParseToken(tokenStr string, encryptKey string, noStrictMode bool) (interfac
 	}
 
 	return record.userdata, nil
+}
+
+//length encryptKey should be equal to 16
+func ClientParseToken(tokenStr string, encryptKey string) error {
+	if len(encryptKey) != g_EncryptKeyLength {
+		panic(fmt.Sprintf("[hftoken] ParseToken: encryptKey should be equal to %d", g_EncryptKeyLength))
+	}
+
+	decryptToken := AesDecrypt(tokenStr, encryptKey)
+
+	token := tagToken{}
+	err := json.Unmarshal([]byte(decryptToken), &token)
+	if err != nil {
+		return errors.New("[hftoken] ParseToken: invalid token")
+	}
+
+	return nil
 }
