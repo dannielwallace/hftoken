@@ -8,6 +8,10 @@ import (
 )
 
 func AesEncrypt(orig string, key string) string {
+	if len(orig) == 0 {
+		return ""
+	}
+
 	// 转成字节数组
 	origData := []byte(orig)
 	k := []byte(key)
@@ -28,6 +32,9 @@ func AesEncrypt(orig string, key string) string {
 }
 
 func AesDecrypt(cryted string, key string) string {
+	if len(cryted) == 0 {
+		return ""
+	}
 	// 转成字节数组
 	crytedByte, _ := base64.StdEncoding.DecodeString(cryted)
 	k := []byte(key)
