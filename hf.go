@@ -3,6 +3,7 @@ package hftoken
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"sync"
 	"sync/atomic"
@@ -25,7 +26,9 @@ const g_EncryptKeyLength = 16
 
 func GenerateToken(userdata interface{}, encryptKey string) (string, error) {
 	if len(encryptKey) != g_EncryptKeyLength {
-		panic(fmt.Sprintf("encryptKey should be equal to %d", g_EncryptKeyLength))
+		errMsg := fmt.Sprintf("[hftoken] GenerateToken: encryptKey should be equal to %d", g_EncryptKeyLength)
+		glog.Error(errMsg)
+		return "", errors.New(errMsg)
 	}
 
 	//unique id for each auth user
@@ -47,13 +50,16 @@ func GenerateToken(userdata interface{}, encryptKey string) (string, error) {
 		userdata:	userdata,
 	}
 	g_mapAuth2User.Store(authId, &record)
+	glog.Info("[hftoken] GenerateToken: ", authId, token, userdata)
 
 	return encryptToken, nil
 }
 
 func PackageToken(tokenStr string, encryptKey string) (string, error) {
 	if len(encryptKey) != g_EncryptKeyLength {
-		panic(fmt.Sprintf("[hftoken] PackageToken: encryptKey should be equal to %d", g_EncryptKeyLength))
+		errMsg := fmt.Sprintf("[hftoken] PackageToken: encryptKey should be equal to %d", g_EncryptKeyLength)
+		glog.Error(errMsg)
+		return "", errors.New(errMsg)
 	}
 
 	decryptToken := AesDecrypt(tokenStr, encryptKey)
@@ -78,7 +84,9 @@ func PackageToken(tokenStr string, encryptKey string) (string, error) {
 //length encryptKey should be equal to 16
 func ServerParseToken(tokenStr string, encryptKey string, noStrictMode bool) (interface{}, error) {
 	if len(encryptKey) != g_EncryptKeyLength {
-		panic(fmt.Sprintf("[hftoken] ParseToken: encryptKey should be equal to %d", g_EncryptKeyLength))
+		errMsg := fmt.Sprintf("[hftoken] ServerParseToken: encryptKey should be equal to %d", g_EncryptKeyLength)
+		glog.Error(errMsg)
+		return "", errors.New(errMsg)
 	}
 
 	decryptToken := AesDecrypt(tokenStr, encryptKey)
@@ -86,26 +94,31 @@ func ServerParseToken(tokenStr string, encryptKey string, noStrictMode bool) (in
 	token := tagToken{}
 	err := json.Unmarshal([]byte(decryptToken), &token)
 	if err != nil {
-		return nil, errors.New("[hftoken] ParseToken: invalid token")
+		glog.Error("[hftoken] ServerParseToken: invalid token", decryptToken)
+		return nil, errors.New("[hftoken] ServerParseToken: invalid token")
 	}
 
 	rcrd, ok := g_mapAuth2User.Load(token.AuthId)
 	if !ok {
-		return nil, errors.New("[hftoken] ParseToken: invalid token")
+		glog.Error("[hftoken] ServerParseToken: invalid token", token.AuthId)
+		return nil, errors.New("[hftoken] ServerParseToken: invalid token")
 	}
 	record, ok := rcrd.(*tagRecord)
 	if !ok {
-		return nil, errors.New("[hftoken] ParseToken: invalid token")
+		glog.Error("[hftoken] ServerParseToken: invalid token", rcrd)
+		return nil, errors.New("[hftoken] ServerParseToken: invalid token")
 	}
 	if token.AuthId != record.AuthId {
-		return nil, errors.New("[hftoken] ParseToken: invalid token")
+		glog.Error("[hftoken] ServerParseToken: invalid token", token.AuthId, record.AuthId)
+		return nil, errors.New("[hftoken] ServerParseToken: invalid token")
 	}
 
 	if noStrictMode != true {
 		tNow := time.Now().Unix()
 		tOff := tNow - token.ReqTime
 		if tOff > 10 || tOff <  0 {
-			return nil, errors.New("[hftoken] ParseToken: expired token")
+			glog.Warning("[hftoken] ServerParseToken: expired token", tNow, token.ReqTime)
+			return nil, errors.New("[hftoken] ServerParseToken: expired token")
 		}
 	}
 
@@ -115,7 +128,9 @@ func ServerParseToken(tokenStr string, encryptKey string, noStrictMode bool) (in
 //length encryptKey should be equal to 16
 func ClientParseToken(tokenStr string, encryptKey string) error {
 	if len(encryptKey) != g_EncryptKeyLength {
-		panic(fmt.Sprintf("[hftoken] ParseToken: encryptKey should be equal to %d", g_EncryptKeyLength))
+		errMsg := fmt.Sprintf("[hftoken] ClientParseToken: encryptKey should be equal to %d", g_EncryptKeyLength)
+		glog.Error(errMsg)
+		return errors.New(errMsg)
 	}
 
 	decryptToken := AesDecrypt(tokenStr, encryptKey)
@@ -123,7 +138,7 @@ func ClientParseToken(tokenStr string, encryptKey string) error {
 	token := tagToken{}
 	err := json.Unmarshal([]byte(decryptToken), &token)
 	if err != nil {
-		return errors.New("[hftoken] ParseToken: invalid token")
+		return errors.New("[hftoken] ClientParseToken: invalid token")
 	}
 
 	return nil
